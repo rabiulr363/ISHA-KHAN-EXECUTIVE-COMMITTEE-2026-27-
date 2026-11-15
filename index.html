@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#a90e28">
+<title>ঈশা খাঁ Photo Card Creator — Square</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap');
+:root{--red:#a90e28;--red2:#c91635;--dark:#76091d}
+*{box-sizing:border-box}
+body{margin:0;padding:18px 12px 34px;background:#f3f3f5;color:#222;font-family:'Noto Sans Bengali',sans-serif}
+.wrap{max-width:1050px;margin:auto}
+h1{text-align:center;color:var(--red);font-size:24px;margin:0 0 6px}
+.sub{text-align:center;color:#666;font-size:13px;margin:0 0 18px}
+.layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:20px;align-items:start}
+.preview,.panel{background:#fff;border-radius:17px;padding:14px;box-shadow:0 8px 26px #2221}
+.preview{display:flex;justify-content:center}
+canvas{width:100%;height:auto;display:block;border-radius:8px;touch-action:none}
+.panel h2{font-size:18px;color:var(--red);margin:3px 0 14px}
+label{display:block;font-size:14px;font-weight:600;margin:13px 0 6px}
+input[type=text]{width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:9px;font:14px 'Noto Sans Bengali',sans-serif;outline-color:var(--red)}
+input[type=file]{width:100%;padding:9px;border:1px solid #ddd;border-radius:9px;background:#fff}
+input[type=range]{width:100%;accent-color:var(--red)}
+.value{font-size:12px;color:#777;float:right}
+.hint{font-size:12px;color:#777;line-height:1.65;margin:8px 0}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
+button{border:0;border-radius:9px;padding:12px 8px;font:600 14px 'Noto Sans Bengali',sans-serif;cursor:pointer}
+.primary{grid-column:1/-1;background:var(--red);color:white;padding:14px;font-size:16px}
+.secondary{background:#fae7eb;color:#8b1024}
+@media(max-width:720px){body{padding:15px 9px 28px}.layout{grid-template-columns:1fr}.preview,.panel{padding:10px}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>ঈশা খাঁ Photo Card Creator</h1>
+<p class="sub">ছবি, নাম ও পদবী দিয়ে নিজের পরিচিতি কার্ড তৈরি করুন</p>
+<div class="layout">
+<section class="preview"><canvas id="card" width="1080" height="1080" aria-label="Square photo card preview"></canvas></section>
+<section class="panel">
+<h2>কার্ড কাস্টমাইজ করুন</h2>
+<label for="photo">ছবি আপলোড করুন</label>
+<input id="photo" type="file" accept="image/*">
+<label for="name">নাম</label>
+<input id="name" type="text" value="আপনার নাম" maxlength="36">
+<label for="designation">পদবী</label>
+<input id="designation" type="text" value="আপনার পদবী" maxlength="36">
+<label for="zoom">ছবির জুম <span class="value" id="zoomValue">1.00×</span></label>
+<input id="zoom" type="range" min=".5" max="3" step=".01" value="1">
+<label for="xpos">ছবির ডানে-বামে অবস্থান</label>
+<input id="xpos" type="range" min="-500" max="500" value="0">
+<label for="ypos">ছবির ওপর-নিচ অবস্থান</label>
+<input id="ypos" type="range" min="-500" max="500" value="0">
+<p class="hint">ছবির ওপর আঙুল বা মাউস দিয়ে টেনে পজিশন ঠিক করুন। জুম স্লাইডার দিয়েও ছবি ছোট-বড় করতে পারবেন।</p>
+<div class="buttons">
+<button class="secondary" id="reset">ছবি রিসেট</button>
+<button class="secondary" id="remove">ছবি সরান</button>
+<button class="primary" id="download">JPG ডাউনলোড</button>
+</div>
+<p class="hint">কার্ডটি Square Size — 1080 × 1080 পিক্সেলে ডাউনলোড হবে।</p>
+</section>
+</div>
+</div>
+<script>
+const c=document.getElementById('card'),g=c.getContext('2d');
+const photoInput=document.getElementById('photo'),nameInput=document.getElementById('name'),roleInput=document.getElementById('designation');
+const zoom=document.getElementById('zoom'),xpos=document.getElementById('xpos'),ypos=document.getElementById('ypos'),zoomValue=document.getElementById('zoomValue');
+let img=null,z=1,dx=0,dy=0,drag=false,px=0,py=0;
+function centerText(s,x,y,font,color,maxWidth){g.font=font;g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';if(maxWidth)g.fillText(s,x,y,maxWidth);else g.fillText(s,x,y)}
+function draw(){
+ const W=1080,H=1080,cx=540,cy=465,r=245;
+ g.clearRect(0,0,W,H);
+ // light blush background with deep red frame
+ g.fillStyle='#fff1f3';g.fillRect(0,0,W,H);
+ g.fillStyle='#a90e28';g.fillRect(0,0,W,22);
+ g.fillStyle='#f7dce1';g.beginPath();g.moveTo(0,22);g.lineTo(185,22);g.lineTo(0,205);g.fill();
+ g.beginPath();g.moveTo(W,22);g.lineTo(W-185,22);g.lineTo(W,205);g.fill();
+
+ centerText('ঈশা খাঁ-বাসরুট',540,105,'700 62px "Noto Sans Bengali"','#850d22',900);
+ centerText('ঢাকা বিশ্ববিদ্যালয়',540,180,'600 43px "Noto Sans Bengali"','#a90e28',900);
+ // Intentionally no divider below the university name
+
+ g.save();g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.clip();
+ g.fillStyle='#fff';g.fillRect(cx-r,cy-r,r*2,r*2);
+ if(img){
+  const fit=Math.max((r*2)/img.width,(r*2)/img.height),s=fit*z,dw=img.width*s,dh=img.height*s;
+  g.drawImage(img,cx-dw/2+dx,cy-dh/2+dy,dw,dh);
+ }else{
+  g.fillStyle='#fbe1e5';g.fillRect(cx-r,cy-r,r*2,r*2);
+  centerText('আপনার ছবি',cx,cy,'600 43px "Noto Sans Bengali"','#b31530');
+ }
+ g.restore();
+ g.lineWidth=18;g.strokeStyle='#a90e28';g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.stroke();
+ g.lineWidth=4;g.strokeStyle='#e7a6b2';g.beginPath();g.arc(cx,cy,r+14,0,Math.PI*2);g.stroke();
+
+ function pill(y,w,h,label,fontSize){
+  g.fillStyle='#a90e28';g.beginPath();g.roundRect((W-w)/2,y,w,h,h/2);g.fill();
+  centerText(label,540,y+h/2,`700 ${fontSize}px "Noto Sans Bengali"`,'#fff',w-45);
+ }
+ pill(745,820,92,(nameInput.value.trim()||'আপনার নাম'),43);
+ pill(850,700,82,(roleInput.value.trim()||'আপনার পদবী'),39);
+
+ // Footer: single-line committee text, including year
+ const grad=g.createLinearGradient(0,955,0,H);grad.addColorStop(0,'#a90e28');grad.addColorStop(1,'#76091d');
+ g.fillStyle=grad;g.fillRect(0,955,W,125);
+ g.fillStyle='#f3c5ce';g.fillRect(95,975,890,2);
+ centerText('ঈশা খাঁ কার্যনির্বাহী কমিটি (২০২৬–২৭)',540,1034,'700 34px "Noto Sans Bengali"','#fff',1000);
+}
+function sync(){z=+zoom.value;dx=+xpos.value;dy=+ypos.value;zoomValue.textContent=z.toFixed(2)+'×';draw()}
+photoInput.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{img=im;zoom.value=1;xpos.value=0;ypos.value=0;sync()};im.src=URL.createObjectURL(f)});
+[nameInput,roleInput].forEach(el=>el.addEventListener('input',draw));
+[zoom,xpos,ypos].forEach(el=>el.addEventListener('input',sync));
+document.getElementById('reset').onclick=()=>{zoom.value=1;xpos.value=0;ypos.value=0;sync()};
+document.getElementById('remove').onclick=()=>{img=null;photoInput.value='';zoom.value=1;xpos.value=0;ypos.value=0;sync()};
+document.getElementById('download').onclick=()=>{draw();const a=document.createElement('a');a.download='Isha-Khan-Square-Photo-Card.jpg';a.href=c.toDataURL('image/jpeg',.95);a.click()};
+c.addEventListener('pointerdown',e=>{if(!img)return;drag=true;px=e.clientX;py=e.clientY;c.setPointerCapture(e.pointerId)});
+c.addEventListener('pointermove',e=>{if(!drag)return;const b=c.getBoundingClientRect();dx+=(e.clientX-px)*c.width/b.width;dy+=(e.clientY-py)*c.height/b.height;px=e.clientX;py=e.clientY;xpos.value=Math.max(-500,Math.min(500,dx));ypos.value=Math.max(-500,Math.min(500,dy));dx=+xpos.value;dy=+ypos.value;draw()});
+['pointerup','pointercancel'].forEach(ev=>c.addEventListener(ev,()=>drag=false));
+c.addEventListener('wheel',e=>{if(!img)return;e.preventDefault();zoom.value=Math.max(.5,Math.min(3,+zoom.value+(e.deltaY<0?.05:-.05)));sync()},{passive:false});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(draw);draw();
+</script>
+</body>
+</html>
